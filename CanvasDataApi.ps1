@@ -1,12 +1,18 @@
-﻿<#
- https://github.com/squid808/
- Use at your own risk and stuff
-
- This project contains separate wrapper methods for the Canvas Data APIs as well
- as a number of helper methods. This was manually written.
-
- Based on https://portal.inshosteddata.com/docs/api
-#>
+﻿################################################################################
+#
+#  Convert-CanvasApiToPowershell
+#
+#  Maintained by Steven Endres (rootalley) at
+#  https://github.com/rootalley/Convert-CanvasApiToPowershell.
+#
+#  Forked from CanvasApis by Spencer Varney (squid808) at
+#  https://github.com/squid808/CanvasApis. Kudos to Spencer!
+#
+#  Licensed under the GNU General Public License Version 3.
+#
+#  Use at your own risk, or contribute to the project and make it better!
+#
+################################################################################
 
 #Set the location back after importing sql
 $loc = get-location
@@ -17,8 +23,8 @@ Set-Location $loc
 
 #Load up the credentials, or prompt the user for them if they don't exist.
 function Get-CanvasDataCredentials(){
-    if ($global:CanvasDataKeyInfo -eq $null) {
-    
+    if ($null -eq $global:CanvasDataKeyInfo) {
+
         $KeyPath = "$env:USERPROFILE\Documents\CanvasDataApiCreds.json"
 
         #TODO: Once this is a module, load it from the module path: $PSScriptRoot or whatever that is
@@ -92,7 +98,7 @@ function Get-CanvasDataAccountDump {
         [int]$After,
 
         [int]$Limit, #canvas defaults to 50
-        
+
         $AccountId="self"
     )
 
@@ -100,7 +106,7 @@ function Get-CanvasDataAccountDump {
 
     if ($After) { $Body["after"]=$After }
     if ($Limit) { $Body["limit"]=$Limit }
-    
+
     return Get-CanvasDataApiResult "/api/account/$AccountId/dump" $Body
 }
 
@@ -123,7 +129,7 @@ function Get-CanvasDataExpiringUrls {
 
         [Parameter(ParameterSetName="ByTable")]
         [int]$Limit,
-        
+
         [Parameter(ParameterSetName="Latest")]
         [Parameter(ParameterSetName="ByTable")]
         [Parameter(ParameterSetName="ByDump")]
@@ -144,7 +150,7 @@ function Get-CanvasDataExpiringUrls {
     return Get-CanvasDataApiResult $Uri -Body $Body
 }
 
-#Retrieve a list of files and signed URLs that constituite a complete snapshot of the current data, 
+#Retrieve a list of files and signed URLs that constituite a complete snapshot of the current data,
 #including all partial dumps up until the last full dump. Option to download and process the data,
 #returned in a table by file name
 function Get-CanvasDataSync {
@@ -163,19 +169,17 @@ function Get-CanvasDataSync {
     } else {
 
         $counter = 0
-            
+
         foreach ($url in $sync.files) {
             $file = (($url.url -split "filename%3D%22")[1] -split ".gz")[0]
-    
-            $uniqueName = $file.Split("-")[0]
 
             Write-Progress -Activity "Downloading sync files: $file" `
                 -Status ("Retrieving file " + ($counter + 1)) `
                 -PercentComplete ($counter/$sync.files.Count * 100)
             $wc = New-Object System.Net.WebClient
-                
+
             #$download = $wc.DownloadData($url.url)
-            
+
             Write-Progress -Activity "Converting sync files: $file" `
                 -Status ("Retrieving file " + ($counter + 1)) `
                 -PercentComplete ($counter/$sync.files.Count * 100)
@@ -187,12 +191,12 @@ function Get-CanvasDataSync {
             }
 
             #Extract-GzData $download | Out-File -FilePath $FilePath -Append -Encoding utf8
-            
+
             $url | Add-Member -MemberType NoteProperty -Name "filePath" -Value $FilePath
 
             $counter++
         }
-        
+
         #$uniqueNames = $dlResults | select -ExpandProperty name | sort | % {$_.Split("-")[0]} | select -Unique
 
         #$results = [ordered]@{}
@@ -230,10 +234,10 @@ function Get-CanvasDataSchema {
     )
 
     $Uri = "/api/schema"
-    
+
     if ($PsCmdlet.ParameterSetName -eq "Latest") {$Uri += "/latest"}
     if ($PsCmdlet.ParameterSetName -eq "ByVersion") {$Uri += "/$Version"}
-    
+
     $results = Get-CanvasDataApiResult $Uri
 
     foreach ($result in $results) {
@@ -298,22 +302,22 @@ function Get-TablesFromUrls {
         SchemaVersion = $schemaVersion
     }
 
-    foreach ($SchemaName in (($Schema.schema | gm -MemberType NoteProperty) `
-        | select -ExpandProperty name)) {
+    foreach ($SchemaName in (($Schema.schema | Get-Member -MemberType NoteProperty) `
+        | Select-Object -ExpandProperty name)) {
         $name = $Schema.schema.($SchemaName).tableName
         $tables.Tables[$name] = $Schema.schema.($SchemaName)
     }
 
-    foreach ($tableName in (($ExpiringUrls.artifactsByTable | gm -MemberType NoteProperty) `
-        | select name -ExpandProperty name)) {
-        
+    foreach ($tableName in (($ExpiringUrls.artifactsByTable | Get-Member -MemberType NoteProperty) `
+        | Select-Object name -ExpandProperty name)) {
+
         $table = $ExpiringUrls.artifactsByTable.($tableName)
 
         $url = $table.files.url
-    
+
         #A byte stream in .gz format
         #$Data = Invoke-WebRequest -Uri $Url #Slower?
-    
+
         Write-Host "Downloading $tableName..." -ForegroundColor Yellow
         $data = (New-Object System.Net.WebClient).DownloadData($Url)
 
@@ -334,8 +338,8 @@ function Compare-CanvasDataSchema($Old, $New) {
         $new = Get-CanvasDataSchema -Version $New
     }
 
-    $oldNames = $old.schema | gm -MemberType NoteProperty | select -ExpandProperty name
-    $newNames = $new.schema | gm -MemberType NoteProperty | select -ExpandProperty name
+    $oldNames = $old.schema | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty name
+    $newNames = $new.schema | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty name
 
     $Results = Compare-Object $oldNames $newNames
 
@@ -353,7 +357,7 @@ function Compare-CanvasDataSchema($Old, $New) {
         }
     }
 
-    $AllNames = $oldNames + $newNames | select -Unique
+    $AllNames = $oldNames + $newNames | Select-Object -Unique
 
     foreach ($Name in $AllNames) {
         if ($oldNames.Contains($Name) -and $newNames.Contains($Name)) {
@@ -361,15 +365,15 @@ function Compare-CanvasDataSchema($Old, $New) {
             $c = New-Object psobject
 
             foreach ($Property in ($old.schema.($Name) | gm -MemberType noteproperty `
-                | select -ExpandProperty name)) {
+                | Select-Object -ExpandProperty name)) {
                 $diff = compare-object $old.schema.($Name) $new.schema.($Name) -Property $Property
 
-                if ($diff -ne $null) {
+                if ($null -ne $diff) {
                     $c | Add-Member -MemberType NoteProperty $Property $diff
                 }
             }
 
-            if (($c | gm -MemberType NoteProperty) -ne $null) {
+            if ($null -ne ($c | Get-Member -MemberType NoteProperty)) {
                 $c | Add-Member -MemberType NoteProperty "table" $Name
                 $comparison.Changed[$Name] = $c
             }
@@ -413,7 +417,7 @@ function Get-CanvasDataSchemaChanges{
 #region Data Utils code
 
 <#
-This code is set to extract out the data from the archive files, process them and 
+This code is set to extract out the data from the archive files, process them and
 spit out the resulting files as efficiently as possible. Benchmarks showed that running
 this same code in the PoSh equivelent was significantly slower.
 
@@ -718,7 +722,7 @@ namespace CanvasData
 Add-Type -TypeDefinition $Source -Language CSharp
 Remove-Variable Source -Force
 
-#These functions are not used in the updates because they are slower than the C# code provided, but can be used 
+#These functions are not used in the updates because they are slower than the C# code provided, but can be used
 #to debug or run manually
 
 #takes in a gzip data object or file and returns the file split on new line characters
@@ -727,14 +731,14 @@ function Extract-GzData {
     param (
         [Parameter(Position=0,
             ParameterSetName="Data",
-            Mandatory=$true, 
+            Mandatory=$true,
             ValueFromPipeline=$true,
             ValueFromPipelineByPropertyName=$true)]
         [byte[]]$Data,
 
         [Parameter(Position=0,
-            ParameterSetName="File", 
-            Mandatory=$true, 
+            ParameterSetName="File",
+            Mandatory=$true,
             ValueFromPipeline=$true,
             ValueFromPipelineByPropertyName=$true)]
         $FilePath,
@@ -758,7 +762,7 @@ function Extract-GzData {
         $outputStream = New-Object System.IO.MemoryStream
 
         $buffer = New-Object byte[](1024)
-    
+
         if ($FirstRowEmpty) {
             $str = "`n"
             $NewLine = [System.Text.Encoding]::UTF8.GetBytes($str)
@@ -793,8 +797,8 @@ function Extract-GzData {
 #writes a chunk of data to a gz file directly
 function Out-GzFile {
     param (
-        [Parameter(Position=0, 
-            Mandatory=$true, 
+        [Parameter(Position=0,
+            Mandatory=$true,
             ValueFromPipeline=$true,
             ValueFromPipelineByPropertyName=$true)]
         [byte[]]$Data,
@@ -832,8 +836,8 @@ function Call-CompiledRegex($inputString, $pattern, $replacement){
 
 #Allows you to manually run the regex on a file
 function Run-RegexOnFile($tableSchema, $data){
-    $types = $tableSchema.columns | select -Unique -ExpandProperty type
-    
+    $types = $tableSchema.columns | Select-Object -Unique -ExpandProperty type
+
     $data = Call-CompiledRegex $data $rPatternNull ""
 
     if ($types.Contains("timestamp")){
@@ -863,7 +867,7 @@ function Set-CanvasSchemaDetails ($Schema) {
     $TableSchemas = @{}
 
     #Collect the schemas by table name
-    $SchemaObjects = $Schema.schema | gm -MemberType NoteProperty | select -ExpandProperty name
+    $SchemaObjects = $Schema.schema | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty name
 
     foreach ($SubObject in $SchemaObjects) {
         $s = $Schema.schema.($SubObject)
@@ -905,16 +909,16 @@ function Get-FilesSchemaFromSync ($DestPath, $ServerLocalPath) {
     $schema | Add-Member -MemberType NoteProperty "files" (New-Object System.Collections.ArrayList)
 
     Set-CanvasSchemaDetails $schema
-            
+
     foreach ($file in $sync.files) {
 
         $table = $schema.TablesSchemaDict[$file.table]
 
         $file = Add-FilePaths $file $DestPath $ServerLocalPath
-        
+
         $file | Add-Member -MemberType NoteProperty "tableSchema" $table
 
-        if ($table.files -eq $null) {
+        if ($null -eq $table.files) {
             $table | Add-Member -MemberType NoteProperty "files" (New-Object System.Collections.ArrayList)
         }
 
@@ -936,8 +940,8 @@ function Get-FilesSchemaFromExpiring ($DestPath, $ServerLocalPath) {
     $schema | Add-Member -MemberType NoteProperty "sequence" $expiringUrls.sequence
 
     $schema | Add-Member -MemberType NoteProperty "files" (New-Object System.Collections.ArrayList)
-        
-    $artifactNames = $expiringUrls.artifactsByTable | gm -MemberType NoteProperty | select -ExpandProperty name
+
+    $artifactNames = $expiringUrls.artifactsByTable | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty name
 
     foreach ($aName in $artifactNames) {
         $a = $expiringUrls.artifactsByTable.($aName)
@@ -951,7 +955,7 @@ function Get-FilesSchemaFromExpiring ($DestPath, $ServerLocalPath) {
             $file = Add-FilePaths $file $DestPath $ServerLocalPath
         }
 
-        if ($table.files -eq $null) {
+        if ($null -eq $table.files) {
             $table | Add-Member -MemberType NoteProperty "files" (New-Object System.Collections.ArrayList)
         }
 
@@ -965,9 +969,9 @@ function Get-FilesSchemaFromExpiring ($DestPath, $ServerLocalPath) {
 #endregion
 
 #take in a formatted schema and download all files referenced
-function Download-CanvasDbFiles ($Schema, $WriteProgress=$false, 
+function Download-CanvasDbFiles ($Schema, $WriteProgress=$false,
     [switch]$InParallel, $ParallelMax = 8){
-    
+
     if ($WriteProgress) {
         $filesProcessed = 0
         $fileCount = $schema.files.Count
@@ -979,12 +983,12 @@ function Download-CanvasDbFiles ($Schema, $WriteProgress=$false,
 
         foreach ($fileinfo in $schema.files) {
 
-            $running = Get-Job | where {$_.Name -eq $jobname -and $_.State -eq "Running"}
+            $running = Get-Job | Where-Object {$_.Name -eq $jobname -and $_.State -eq "Running"}
 
             if ($running.Count -ge $ParallelMax) {
                 $running | Wait-Job -Any | Out-Null
             }
-            
+
             $url = $fileInfo.url
             $path = $fileInfo.zipPath
 
@@ -993,7 +997,7 @@ function Download-CanvasDbFiles ($Schema, $WriteProgress=$false,
             } -Name $jobname | Out-Null
         }
 
-        get-job | where Name -like "*$jobname*" | Wait-Job | Remove-Job
+        get-job | Where-Object Name -like "*$jobname*" | Wait-Job | Remove-Job
 
     } else {
         foreach ($fileInfo in $schema.files) {

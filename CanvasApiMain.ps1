@@ -1,17 +1,23 @@
-﻿<#
- https://github.com/squid808/
- Use at your own risk and stuff
-
- This project contains the main methods for the Canvas APIs as well
- as a number of test methods. See the method generator for more potential.
-
- Based on https://canvas.instructure.com/doc/api/index.html
-#>
+﻿################################################################################
+#
+#  Convert-CanvasApiToPowershell
+#
+#  Maintained by Steven Endres (rootalley) at
+#  https://github.com/rootalley/Convert-CanvasApiToPowershell.
+#
+#  Forked from CanvasApis by Spencer Varney (squid808) at
+#  https://github.com/squid808/CanvasApis. Kudos to Spencer!
+#
+#  Licensed under the GNU General Public License Version 3.
+#
+#  Use at your own risk, or contribute to the project and make it better!
+#
+################################################################################
 
 #region Base Canvas API Methods
 function Get-CanvasCredentials(){
-    if ($global:CanvasApiTokenInfo -eq $null) {
-    
+    if ($null -eq $global:CanvasApiTokenInfo) {
+
         $ApiInfoPath = "$env:USERPROFILE\Documents\CanvasApiCreds.json"
 
         #TODO: Once this is a module, load it from the module path: $PSScriptRoot or whatever that is
@@ -51,7 +57,7 @@ function Get-CanvasApiResult(){
 
     $AuthInfo = Get-CanvasCredentials
 
-    if ($RequestParameters -eq $null) { $RequestParameters = @{} }
+    if ($null -eq $RequestParameters) { $RequestParameters = @{} }
 
     $RequestParameters["per_page"] = "10000"
 
@@ -59,7 +65,7 @@ function Get-CanvasApiResult(){
 
     try {
     $Results = Invoke-WebRequest -Uri ($AuthInfo.BaseUri + $Uri) -ContentType "multipart/form-data" `
-        -Headers $headers -Method $Method -Body $RequestParameters 
+        -Headers $headers -Method $Method -Body $RequestParameters
     } catch {
         throw $_.Exception.Message
     }
@@ -75,24 +81,22 @@ function Get-CanvasApiResult(){
 
     $JsonResults.AddRange(($Results.Content | ConvertFrom-Json))
 
-    if ($Results.Headers.link -ne $null) {
-        $NextUriLine = $Results.Headers.link.Split(",") | where {$_.Contains("rel=`"next`"")}
-
-        $PerPage = $NextUriLine.Substring($NextUriLine.IndexOf("per_page=")+9) -replace '(\D).*',""
+    if ($null -ne $Results.Headers.link) {
+        $NextUriLine = $Results.Headers.link.Split(",") | Where-Object {$_.Contains("rel=`"next`"")}
 
         if (-not [string]::IsNullOrWhiteSpace($NextUriLine)) {
             while ($Results.Headers.link.Contains("rel=`"next`"")) {
-        
+
                 $nextUri = $Results.Headers.link.Split(",") | `
-                            where {$_.Contains("rel=`"next`"")} | `
-                            % {$_ -replace ">; rel=`"next`""} |
-                            % {$_ -replace "<"}
-        
+                            Where-Object {$_.Contains("rel=`"next`"")} | `
+                            ForEach-Object {$_ -replace ">; rel=`"next`""} |
+                            ForEach-Object {$_ -replace "<"}
+
                 #Write-Progress
                 Write-Host $nextUri
-        
+
                 $Results = Invoke-WebRequest -Uri $nextUri -Headers $headers -Method Get -Body $RequestParameters -ContentType "multipart/form-data" `
-    
+
                 $JsonResults.AddRange(($Results.Content | ConvertFrom-Json))
             }
         }
