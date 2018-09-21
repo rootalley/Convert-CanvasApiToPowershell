@@ -224,7 +224,7 @@ function Convert-MethodToPosh ($Method) {
 <#
 .Synopsis
    {0}
-.EXAMPLE
+.Example
    {6}
 #>
 function {1} {{{{
