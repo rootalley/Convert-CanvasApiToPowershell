@@ -77,6 +77,13 @@ function Get-UniqueCmdletName($Method) {
         }
     }
 
+    $Verb = ConvertTo-TitleCase $Method.operations.method.ToLower()
+
+    switch ($Verb) {
+        Put { $Verb = "Update" }
+        Post { $Verb = "New" }
+    }
+
     $Noun = ($Words -join "")
     if ($Params.Count -gt 0) {
         $Noun += ("By" + ($Params -join "And"))
@@ -84,7 +91,7 @@ function Get-UniqueCmdletName($Method) {
 
     $Noun = $Noun -replace "_",""
 
-    return (ConvertTo-TitleCase $Method.operations.method.ToLower()) + "-Canvas" + $Noun
+    return $Verb + "-Canvas" + $Noun
 }
 
 
