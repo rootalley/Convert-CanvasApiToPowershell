@@ -16,7 +16,7 @@
 
 #Set the location back after importing sql
 $loc = get-location
-ipmo sqlps -DisableNameChecking
+Import-Module sqlps -DisableNameChecking
 Set-Location $loc
 
 #region Canvas Data API Endpoint Wrappers
@@ -176,9 +176,6 @@ function Get-CanvasDataSync {
             Write-Progress -Activity "Downloading sync files: $file" `
                 -Status ("Retrieving file " + ($counter + 1)) `
                 -PercentComplete ($counter/$sync.files.Count * 100)
-            $wc = New-Object System.Net.WebClient
-
-            #$download = $wc.DownloadData($url.url)
 
             Write-Progress -Activity "Converting sync files: $file" `
                 -Status ("Retrieving file " + ($counter + 1)) `
@@ -190,7 +187,7 @@ function Get-CanvasDataSync {
                 New-Item -Path $FilePath -ItemType File
             }
 
-            #Extract-GzData $download | Out-File -FilePath $FilePath -Append -Encoding utf8
+            #Expand-GzData $download | Out-File -FilePath $FilePath -Append -Encoding utf8
 
             $url | Add-Member -MemberType NoteProperty -Name "filePath" -Value $FilePath
 
@@ -322,7 +319,7 @@ function Get-TablesFromUrls {
         $data = (New-Object System.Net.WebClient).DownloadData($Url)
 
         Write-Host "Converting and storing $tableName..." -ForegroundColor Yellow
-        $tables.Tables[$tableName] | Add-Member NoteProperty "data" (Extract-GzData $data)
+        $tables.Tables[$tableName] | Add-Member NoteProperty "data" (Expand-GzData $data)
     }
 
     return $Tables
@@ -364,7 +361,7 @@ function Compare-CanvasDataSchema($Old, $New) {
 
             $c = New-Object psobject
 
-            foreach ($Property in ($old.schema.($Name) | gm -MemberType noteproperty `
+            foreach ($Property in ($old.schema.($Name) | Get-Member -MemberType noteproperty `
                 | Select-Object -ExpandProperty name)) {
                 $diff = compare-object $old.schema.($Name) $new.schema.($Name) -Property $Property
 
@@ -726,7 +723,7 @@ Remove-Variable Source -Force
 #to debug or run manually
 
 #takes in a gzip data object or file and returns the file split on new line characters
-function Extract-GzData {
+function Expand-GzData {
 [CmdletBinding(DefaultParameterSetName="Data")]
     param (
         [Parameter(Position=0,
@@ -829,23 +826,23 @@ $rPatternTrue = "(?<=(^|`n|`t))true(?=($|`n|`t))"
 $rPatternFalse = "(?<=(^|`n|`t))false(?=($|`n|`t))"
 
 #Call a compile regex method
-function Call-CompiledRegex($inputString, $pattern, $replacement){
+function Invoke-CompiledRegex($inputString, $pattern, $replacement){
     return ([System.Text.RegularExpressions.Regex]::Replace($inputString, $pattern, `
         $replacement, [System.Text.RegularExpressions.RegexOptions]::Compiled))
 }
 
 #Allows you to manually run the regex on a file
-function Run-RegexOnFile($tableSchema, $data){
+function Invoke-RegexOnFile($tableSchema, $data){
     $types = $tableSchema.columns | Select-Object -Unique -ExpandProperty type
 
-    $data = Call-CompiledRegex $data $rPatternNull ""
+    $data = Invoke-CompiledRegex $data $rPatternNull ""
 
     if ($types.Contains("timestamp")){
-        $data = Call-CompiledRegex $data $rPatternDate ""
+        $data = Invoke-CompiledRegex $data $rPatternDate ""
     }
     if ($types.Contains("boolean")){
-        $data = Call-CompiledRegex $data $rPatternTrue "1"
-        $data = Call-CompiledRegex $data $rPatternFalse "0"
+        $data = Invoke-CompiledRegex $data $rPatternTrue "1"
+        $data = Invoke-CompiledRegex $data $rPatternFalse "0"
     }
 
     return $data
@@ -969,7 +966,7 @@ function Get-FilesSchemaFromExpiring ($DestPath, $ServerLocalPath) {
 #endregion
 
 #take in a formatted schema and download all files referenced
-function Download-CanvasDbFiles ($Schema, $WriteProgress=$false,
+function Get-CanvasDbFiles ($Schema, $WriteProgress=$false,
     [switch]$InParallel, $ParallelMax = 8){
 
     if ($WriteProgress) {
