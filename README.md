@@ -1,7 +1,7 @@
 # PowerShell clients for the Canvas LMS API
 
 ## About
-This project parses the Swagger specification for the [Instructure Canvas learning management system API] (https://canvas.instructure.com/doc/api/) to generate a PowerShell client for Canvas. Use at your own risk, or contribute to the project and make it better!
+This project parses the Swagger specification for the [Instructure Canvas learning management system API](https://canvas.instructure.com/doc/api/) to generate a PowerShell client for Canvas. Use at your own risk, or contribute to the project and make it better!
 
 Forked from the [CanvasApis](https://github.com/squid808/CanvasApis) project by [Spencer Varney (squid808)](https://github.com/squid808). Kudos to Spencer!
 
