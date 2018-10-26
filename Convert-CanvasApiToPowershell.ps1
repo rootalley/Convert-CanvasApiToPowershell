@@ -69,11 +69,13 @@ function Get-UniqueCmdletName($Method) {
     $Params = @()
     $Split = $Method.path.Split("/")
 
-    for ($i = 2; $i -lt $Split.Count; $i++){
+    for ($i = 1; $i -lt $Split.Count; $i++){
         if ($Split[$i] -match"{.*}"){
             $Params += (ConvertTo-TitleCase ($Split[$i] -replace "[{}]","") "_")
         } elseif (-not [string]::IsNullOrWhiteSpace($Split[$i])){
-            $Words += (ConvertTo-TitleCase $Split[$i] "_")
+            if("V1" -ne $Split[$i]) {
+                $Words += (ConvertTo-TitleCase $Split[$i] "_")
+            }
         }
     }
 
@@ -270,8 +272,7 @@ function Convert-CanvasApiToPowershell {
     foreach ($A in $Api.apis) {
         foreach ($Method in $A.api.apis){
             $Deprecated = ((($Method.description).ToLower()).StartsWith("deprecated"))
-            $Exempt = (-not ($Method.path).StartsWith("/v1/"))
-            if (-not ($Deprecated -or $Exempt)){
+            if (-not $Exempt){
                 $M = (Convert-MethodToPosh $Method)
                 $M | Add-Member -MemberType NoteProperty -Name "method" -Value $Method
                 $PoshMethodsInOrder.Add($M) | Out-Null
@@ -281,19 +282,6 @@ function Convert-CanvasApiToPowershell {
                 $MethodsByName[$M.name].Add($M) | Out-Null
             }
         }
-    }
-
-    #now find any duplicate cmdlet names, make those unique and throw them in to a region collection
-    foreach ($M in $PoshMethodsInOrder) {
-        if ($MethodsByName[$M.name].Count -gt 1){
-            $M.name = MakeUniqueCmdletName $M
-        }
-
-        if (-not $Regions.ContainsKey($M.method.parent.description)){
-            $Regions.Add($M.method.parent.description, (New-Object System.Collections.ArrayList))
-        }
-
-        $Regions[$M.method.parent.description].Add(($M.body -f $M.name)) | Out-Null
     }
 
     $Doc = New-Object System.Collections.ArrayList
