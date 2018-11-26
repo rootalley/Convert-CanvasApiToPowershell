@@ -56,7 +56,7 @@ function Read-CanvasSwaggerDocs ($BaseUri) {
 function ConvertTo-TitleCase ($String, $Delimiter) {
     $String = $String.ToLower()
 
-    if ($null -ne $Delimiter){
+    if ($null -ne $Delimiter) {
         return ($String.Split($Delimiter) | ForEach-Object {(Get-Culture).TextInfo.ToTitleCase($_)}) -join ""
     } else {
         return (Get-Culture).TextInfo.ToTitleCase($String)
@@ -69,10 +69,10 @@ function Get-UniqueCmdletName($Method) {
     $Params = @()
     $Split = $Method.path.Split("/")
 
-    for ($i = 1; $i -lt $Split.Count; $i++){
-        if ($Split[$i] -match"{.*}"){
+    for ($i = 1; $i -lt $Split.Count; $i++) {
+        if ($Split[$i] -match"{.*}") {
             $Params += (ConvertTo-TitleCase ($Split[$i] -replace "[{}]","") "_")
-        } elseif (-not [string]::IsNullOrWhiteSpace($Split[$i])){
+        } elseif (-not [string]::IsNullOrWhiteSpace($Split[$i])) {
             if("V1" -ne $Split[$i]) {
                 $Words += (ConvertTo-TitleCase $Split[$i] "_")
             }
@@ -110,7 +110,7 @@ function Convert-ParamNameToPoshString ($ParamName) {
 
 
 function Get-MethodParamTypeForPosh ($Param) {
-    switch ($Param.type){
+    switch ($Param.type) {
         "Float" { "[float]" }
         "string" { "[string]" }
         "boolean" {"[bool]"}
@@ -140,7 +140,7 @@ function Convert-MethodParamsToString ($Method) {
 
     $ParamsString = New-Object System.Collections.ArrayList
 
-    foreach ($P in $Params){
+    foreach ($P in $Params) {
         $ParamsString.Add((New-MethodParamString $P)) | Out-Null
     }
 
@@ -158,8 +158,8 @@ function Convert-MethodParamsToString ($Method) {
 function Convert-MethodUri ($Method) {
     $Paths = $Method.path.Split("/")
 
-    for ($i = 0; $i -lt $Paths.Length; $i++){
-        if ($Paths[$i][0] -eq '{' -and $Paths[$i][-1] -eq '}'){
+    for ($i = 0; $i -lt $Paths.Length; $i++) {
+        if ($Paths[$i][0] -eq '{' -and $Paths[$i][-1] -eq '}') {
             $Paths[$i] = '$' + (ConvertTo-TitleCase $Paths[$i].Replace('{','').Replace('}','') -Delimiter "_")
         }
     }
@@ -187,7 +187,7 @@ function New-MethodBody ($Method) {
 
     $Params = New-Object System.Collections.ArrayList
 
-    foreach ($P in $Method.operations.parameters){
+    foreach ($P in $Method.operations.parameters) {
         $Params.Add((New-MethodBodyParameter $P)) | Out-Null
     }
 
@@ -270,13 +270,13 @@ function Convert-CanvasApiToPowershell {
     $Regions = @{}
 
     foreach ($A in $Api.apis) {
-        foreach ($Method in $A.api.apis){
+        foreach ($Method in $A.api.apis) {
             $Deprecated = ((($Method.description).ToLower()).StartsWith("deprecated"))
-            if (-not $Exempt){
+            if (-not $Exempt) {
                 $M = (Convert-MethodToPosh $Method)
                 $M | Add-Member -MemberType NoteProperty -Name "method" -Value $Method
                 $PoshMethodsInOrder.Add($M) | Out-Null
-                if (-not $MethodsByName.ContainsKey($M.name)){
+                if (-not $MethodsByName.ContainsKey($M.name)) {
                     $MethodsByName.Add($M.name, (New-Object System.Collections.ArrayList)) | Out-Null
                 }
                 $MethodsByName[$M.name].Add($M) | Out-Null
