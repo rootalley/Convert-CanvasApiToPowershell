@@ -1,18 +1,16 @@
-﻿################################################################################
-#
-#  Convert-CanvasApiToPowershell
-#
-#  Maintained by Steven Endres (rootalley) at
-#  https://github.com/rootalley/Convert-CanvasApiToPowershell.
-#
-#  Forked from CanvasApis by Spencer Varney (squid808) at
-#  https://github.com/squid808/CanvasApis. Kudos to Spencer!
-#
-#  Licensed under the GNU General Public License Version 3.
-#
-#  Use at your own risk, or contribute to the project and make it better!
-#
-################################################################################
+﻿<#
+  Convert-CanvasApiToPowershell
+
+  Maintained by Steven Endres (rootalley) at
+  https://github.com/rootalley/Convert-CanvasApiToPowershell.
+
+  Forked from CanvasApis by Spencer Varney (squid808) at
+  https://github.com/squid808/CanvasApis. Kudos to Spencer!
+
+  Licensed under the GNU General Public License Version 3.
+
+  Use at your own risk, or contribute to the project and make it better!
+#>
 
 #region Base Canvas API Methods
 function Get-CanvasCredentials(){
